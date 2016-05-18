@@ -13,7 +13,6 @@ import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.github.omadahealth.typefaceview.TypefaceTextView;
 import com.github.orangegangsters.lollipin.lib.PinActivity;
 import com.github.orangegangsters.lollipin.lib.R;
 import com.github.orangegangsters.lollipin.lib.enums.KeyboardButtonEnum;
@@ -54,6 +53,8 @@ public abstract class AppLockActivity extends PinActivity implements KeyboardBut
     protected String mPinCode;
 
     protected String mOldPinCode;
+
+    private boolean isCodeSuccessful = false;
 
     /**
      * First creation
@@ -119,7 +120,7 @@ public abstract class AppLockActivity extends PinActivity implements KeyboardBut
         mStepTextView = (TextView) this.findViewById(R.id.pin_code_step_textview);
         mPinCodeRoundView = (PinCodeRoundView) this.findViewById(R.id.pin_code_round_view);
         mPinCodeRoundView.setPinLength(this.getPinLength());
-        mForgotTextView = (TypefaceTextView) this.findViewById(R.id.pin_code_forgot_textview);
+        mForgotTextView = (TextView) this.findViewById(R.id.pin_code_forgot_textview);
         mForgotTextView.setOnClickListener(this);
         mKeyboardView = (KeyboardView) this.findViewById(R.id.pin_code_keyboard_view);
         mKeyboardView.setKeyboardButtonClickedListener(this);
@@ -147,7 +148,7 @@ public abstract class AppLockActivity extends PinActivity implements KeyboardBut
             mFingerprintManager = (FingerprintManager) getSystemService(Context.FINGERPRINT_SERVICE);
             mFingerprintUiHelper = new FingerprintUiHelper.FingerprintUiHelperBuilder(mFingerprintManager).build(mFingerprintImageView, mFingerprintTextView, this);
             try {
-                if (mFingerprintManager.isHardwareDetected()) {
+                if (mFingerprintManager.isHardwareDetected() && mFingerprintUiHelper.isFingerprintAuthAvailable()) {
                     mFingerprintImageView.setVisibility(View.VISIBLE);
                     mFingerprintTextView.setVisibility(View.VISIBLE);
                     mFingerprintUiHelper.startListening();
@@ -226,12 +227,17 @@ public abstract class AppLockActivity extends PinActivity implements KeyboardBut
     @Override
     public void finish() {
         super.finish();
-        if (mLockManager != null) {
-            AppLock appLock = mLockManager.getAppLock();
-            if (appLock != null) {
-                appLock.setLastActiveMillis();
+
+        //If code successful, reset the timer
+        if (isCodeSuccessful) {
+            if (mLockManager != null) {
+                AppLock appLock = mLockManager.getAppLock();
+                if (appLock != null) {
+                    appLock.setLastActiveMillis();
+                }
             }
         }
+
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.GINGERBREAD_MR1) {
             //Animate if greater than 2.3.3
             overridePendingTransition(R.anim.nothing, R.anim.slide_down);
@@ -392,6 +398,7 @@ public abstract class AppLockActivity extends PinActivity implements KeyboardBut
     }
 
     protected void onPinCodeSuccess() {
+        isCodeSuccessful = true;
         onPinSuccess(mAttempts);
         mAttempts = 1;
     }
